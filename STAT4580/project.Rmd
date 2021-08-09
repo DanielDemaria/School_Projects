@@ -17,13 +17,13 @@ library(countrycode)
 
 
 if (! file.exists("artwork.csv"))
-    download.file("https://raw.githubusercontent.com/Sparkypaysrent/Projects/main/STAT4580/artwork.csv", "artwork.csv")
+    download.file("https://raw.githubusercontent.com/Sparkypaysrent/School_Projects/main/STAT4580/artwork.csv", "artwork.csv")
 
 
 # cleaned up version of data, so world map works
 
 if (! file.exists("artist_data.csv"))
-    download.file("https://https://raw.githubusercontent.com/Sparkypaysrent/Projects/main/STAT4580/artist_data.csv", "artist_data.csv")
+    download.file("https://https://raw.githubusercontent.com/Sparkypaysrent/School_Projects/main/STAT4580/artist_data.csv", "artist_data.csv")
 
 
 
