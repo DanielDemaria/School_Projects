@@ -37,7 +37,7 @@ artists <- read_csv("artist_data.csv", guess_max = 1000000)
 
 Tate is an institution that houses, in a network of four art galleries, the United Kingdom's national collection of British art, and international modern and contemporary art. It is one of the most famous art institutions in the world. The Tate institutions have been around for a long time and has collected thousands of art pieces, so it is safe to say that its art collection can be used as sample size for the entire art world. This analysis investigates some trends among the art during the last few hundred years and looks to answer questions such as: Where do these artists come from? Does the general location of artists change over the years? Does the gender ratio change as years go on? Does the size of art fluctuate? How long does it take for an art piece to be taken in by an institution? This analysis will answer all of these questions and showcase how much the art world has changed! The data for this analysis was sourced from the ART COLLECTIONS data set.
 
-_https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-01-12/readme.md_
+*https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-01-12/readme.md*
 
 
 ## Geography Over Time 
