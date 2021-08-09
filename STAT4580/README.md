@@ -4,4 +4,4 @@ This is the final project that I completed in STAT4580 Data Visualization and Da
 
 
 
-It is required to install the following packages for the code to run: tidyverse, countrycode.
+It is required to install the following packages for the code to run: tidyverse, countrycode, Knitr and scales.
