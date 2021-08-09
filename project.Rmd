@@ -1,0 +1,278 @@
+---
+title: "Art Through the Years"
+author: "Daniel DeMaria"
+date: "5/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+library(tidyverse)
+library(countrycode)
+
+
+if (! file.exists("artwork.csv"))
+    download.file("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-12/artwork.csv", "artwork.csv")
+
+
+# cleaned up version of data, so world map works
+
+if (! file.exists("artist_data.csv"))
+    download.file("https://raw.githubusercontent.com/Sparkypaysrent/Projects/main/artist_data.csv", "artist_data.csv")
+
+
+
+artwork  <- read_csv("artwork.csv", guess_max = 1000000)
+artists <- read_csv("artist_data.csv", guess_max = 1000000)
+
+
+  
+```  
+## Introduction 
+
+Tate is an institution that houses, in a network of four art galleries, the United Kingdom's national collection of British art, and international modern and contemporary art. It is one of the most famous art institutions in the world. The Tate institutions have been around for a long time and has collected thousands of art pieces, so it is safe to say that its art collection can be used as sample size for the entire art world. This analysis investigates some trends among the art during the last few hundred years and looks to answer questions such as: Where do these artists come from? Does the general location of artists change over the years? Does the gender ratio change as years go on? Does the size of art fluctuate? How long does it take for an art piece to be taken in by an institution? This analysis will answer all of these questions and showcase how much the art world has changed! 
+
+
+## Geography Over Time 
+
+The first thing that was analyzed was the birth place of artists, in order to see where most of artists came from and to find out how diversified Tate's art collection really is. 
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+
+artists$region <-  countrycode(sourcevar = artists$placeOfBirth,
+                            origin = "country.name",
+                            destination = "region")
+
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+#World map (work in progress)
+
+birth_count <- count(artists, placeOfBirth) 
+
+
+
+
+world_map <- map_data("world")
+
+
+#write.csv(world_map,, row.names = FALSE)
+
+birth_map <- left_join(world_map, birth_count, by = c("region" = "placeOfBirth"))
+
+
+
+ggplot(birth_map, aes(long, lat, group = group))+
+  geom_polygon(aes(fill = n), color = "white")+
+  scale_fill_viridis_c(option = "C")+
+  ggtitle("Artist Birth Place Map")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+This world map showcases the Birth Place of all artists in the Tate collection who had a listed location. The data did have to be cleaned up to get this illustration but it was well worth it as it shows a very informative map. The results of the map show that Tate has collected art from pretty much every facet of the world, but seems to show a favoritism towards art from America and the United Kingdom. To get a better idea of the geographical diversity of the collection it might be a better idea to group by region instead of country.
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+#Graphing artists based on their place of birth on region
+
+birth_summary <- artists %>%
+                group_by(region) %>%
+                summarise(count =n())
+
+birth_summary1 <- drop_na(birth_summary)
+
+
+
+p <- ggplot(birth_summary1, aes(x = count, y = region)) 
+
+p + geom_col(fill = "red")+ 
+        ggtitle("Birth Place Distribution Among Regions")+
+        theme(plot.title = element_text(hjust = 0.5))
+```
+
+In this chart all of the countries have been grouped together into seven regions. This chart shows clearer that North America and Europe & Central Asia take up a vast majority of the space at the Tate institution. However, it is possible that this is due to how old the institution is and perhaps if we look at the timeline of artists birth’s we can see when other parts of the world start to get more recognition.  
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE,fig.width=12}
+#regions over time
+
+Africa <- filter(artists, region == "Sub-Saharan Africa")
+
+Africa_years <- Africa %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+Asia <- filter(artists, region == "South Asia")
+
+Asia_years <- Asia %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+America <- filter(artists, region == "North America")
+
+America_years <- America %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+MiddleEast <- filter(artists, region == "Middle East & North Africa")
+
+MiddleEast_years <- MiddleEast %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+Latin <- filter(artists, region == "Latin America & Central Asia")
+
+Latin_years <- Latin %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+Europe <- filter(artists, region == "Europe & Central Asia")
+
+Europe_years <- Europe %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+Pacific <- filter(artists, region == "East Asia & Pacific")
+
+
+Pacific_years <- Pacific %>%
+                group_by(yearOfBirth,region) %>%
+                summarise(count =n())
+
+
+ggplot() +
+  geom_line(data = Africa_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Asia_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = America_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = MiddleEast_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Latin_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Europe_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Pacific_years, aes(x= yearOfBirth, y = count, color = region))+
+  ggtitle("Birth Place Distribution Over the Years")+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(y= "Count", x = "Birth Year")
+
+```
+
+This line graph shows the number of artists born during each year from every region. At as first glance we can see that it wasn’t until the 1900’s that artists from other regions were getting any recognition. However, it is hard to compare the regions with less artists in this graph, to improve visibility the same information will be put on a faceted plot.  
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE,fig.width=12}
+
+ggplot() +
+  geom_line(data = Africa_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Asia_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = America_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = MiddleEast_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Latin_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Europe_years, aes(x= yearOfBirth, y = count, color = region)) +
+  geom_line(data = Pacific_years, aes(x= yearOfBirth, y = count, color = region)) +
+  ggtitle("Birth Place Distribution Over the Years")+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(y= "Count", x = "Birth Year")+
+  facet_wrap(~ region)
+
+
+
+
+```
+
+In the faceted plot we can see that the Middle East & North Africa, South Asia, and Sub-Saharan Africa regions have barely any growth compared to North America or East Asia & Pacific regions. Surprisingly even with the rise of other regions in the 1900’s, Europe & Central Asia have much more growth than any other region.  
+
+## Gender Over Time 
+
+The next topic this analyzation will look at is how the gender of artists changes over time. It will be interesting to see when the rise of female artists happens and whether the rise in Female artists impacts the number of male artists in any way.  
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+#gender of artist over time
+
+
+artists_men <- filter(artists, gender == "Male")
+artists_women <- filter(artists, gender == "Female")
+
+
+men_summary <- artists_men %>%
+                    group_by(yearOfBirth, gender) %>%
+                    summarise(count = n())
+
+
+
+women_summary <- artists_women %>%
+                    group_by(yearOfBirth, gender) %>%
+                    summarise(count = n())
+
+
+ggplot() +
+  geom_line(data = men_summary, aes(x= yearOfBirth, y = count, color = "blue")) +
+  geom_line(data = women_summary, aes(x= yearOfBirth, y = count, color = "red"))+
+  scale_color_discrete(labels = c("Male Artists", "Female Artists"))+
+  ggtitle("Number of Male and Female Artists over Time")+
+  labs(y= "Count", x = "Birth Year")
+
+
+
+```
+
+This chart shows that the rise in Female artists occurred around the 1900’s similarly to the rise of regions other than Europe. Surprisingly the number of male artists also increased in the 1900’s, perhaps this is due to the popularity of famous 20th century painters such as Picasso and Jackson Pollock.  
+
+## Art Size Over Time 
+
+The topic of discussion will be how the size of artworks has fluctuated over the years. It will be interesting to see if smaller artworks become more popular as time goes on because of limited space in many art Galleries or if bigger pieces are still prized for their grandeur.    
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+#width and height over time
+
+
+averagedim <- artwork %>%
+                group_by(acquisitionYear) %>%
+                summarise(averageH = mean(height),
+                          averageW = mean(width),
+                          size = (averageH*averageW)/1000000)
+averagedim1 <- drop_na(averagedim)
+
+
+ggplot(averagedim1) +
+       geom_line(aes(x = acquisitionYear, y = size), color = "blue")+
+       ggtitle("Artwork Size Over The Years")+
+       theme(plot.title = element_text(hjust = 0.5)) +
+       labs(y= "Art Size (Meters)", x = "Acquisition Year")+
+       scale_y_continuous(labels = scales::comma)
+
+
+#grid.arrange(p, p1, ncol = 2)
+
+```
+
+In this graph the art size calculation was obtained by multiplying the average height and width of art pieces for the year they were acquired by Tate to obtain the square meterage of the art piece. The average size of the artworks does go down as the years go on, probably for the reason as mentioned before, if the galleries get filled up with the larger pieces from the past it makes sense that there would be less room for newer pieces.  
+
+## Aquisition vs Creation Over Time 
+
+The last topic that is going to be analyzed is how long on average does it take for an art piece to get into the Tate art galleries after its creation. It is a very common saying that many artists aren't appreciated until their death, so it will fascinating to see how much weight that actually holds.  
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+#Basic chart to when art was made vs aquired by Tate 
+
+ggplot(artwork) + 
+  geom_density(aes(year, fill = "Creation Date"), alpha = 0.5) + 
+  geom_density(aes(acquisitionYear, fill = "Acquisition Date"), alpha = 0.5) +
+  ggtitle("Acquisition vs Creation")+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(y= "", x = "Year")+
+  scale_fill_discrete(name = "")
+
+
+```
+
+In the graph it shows that it usually does take some time for an art piece to taken into the gallery, it does seem that this time has changed over the years though. In the 1800’s it took an average of about 50 years for the artwork to be taken in whereas in the late 1900’s it looks like the time is much shorter and most art pieces are taken in fairly quickly. This could be due to the internet allowing artists to market themselves better, and thus allowing them to get recognition for their work in their lifetime.  
+
+## Conclusion
+
+After this analysis it is clear that the artworld has change quite a bit over the years, the geographic location of artists, gender of artists, size of art works, and the speed of artwork acquisition into a gallery are all vastly different than they were just a hundred years ago. With the power of the internet, and the way the world is becoming more inclusive the artworld is changing more than ever. Time will tell how much more it will change but the idea of change is always exciting! 
+
