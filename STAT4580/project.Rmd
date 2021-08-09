@@ -55,7 +55,7 @@ artists$region <-  countrycode(sourcevar = artists$placeOfBirth,
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE}
 
-#World map 
+#Worldmap
 
 birth_count <- count(artists, placeOfBirth) 
 
