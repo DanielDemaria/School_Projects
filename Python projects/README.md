@@ -1,3 +1,5 @@
+##Python projects
+
 These are two games that I created with python. 
 
 The Math Game uses the tkinter package to create an interactable GUI that gives simple math problems and keeps track of how many are answered correctly. 
