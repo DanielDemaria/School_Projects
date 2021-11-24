@@ -1,0 +1,808 @@
+---
+title: "STAT4540Proj_1"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+library(boot)
+library(class)
+library(FNN)
+library(caret)
+library(MASS)
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+
+
+#read in data/load in packages 
+
+mov_test <- read.csv("mov_eval.csv", na.strings="NA")
+
+mov_train <- read.csv("mov_train.csv", na.strings="NA")
+
+wisc_train <- read.csv("wisc.csv", na.strings="NA")
+
+wisc_test <- read.csv("wisc_eval.csv", na.strings="NA")
+
+
+```
+
+# 1.1 
+
+# i
+
+* Creating 3 linear regression models
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+lm1 <- lm(rating ~ ., mov_train)
+
+summary(lm1)
+
+lm2 <- lm(rating ~ popularity + genre + mood + I(popularity * genre)
++ I(popularity * mood) + I(genre * mood), mov_train)
+
+summary(lm2)
+
+lm3 <- lm(rating ~ popularity + genre + mood + I(popularity^2)
++ I(genre^2) + I(popularity * genre) + I(popularity *mood)
++ I(genre * mood), mov_train)
+
+summary(lm3)
+
+```
+
+# ii 
+
+* QQnorm plots to show that the irreducible errors in all 3 models are not 
+normally distributed. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+par(mfrow=c(2,2))
+qqnorm(lm1$residuals)
+qqline(lm1$residuals)
+
+qqnorm(lm2$residuals)
+qqline(lm2$residuals)
+
+qqnorm(lm3$residuals)
+qqline(lm3$residuals)
+
+```
+
+# iii 
+
+* Bootstrap to construct 95% confidence intervals for Beta1 and elements of the 
+correlation matrix of (beta0,beta1,beta2,beta3) in lm1. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+
+set.seed(4540)
+# boot function for \beta_1
+fct_coe <- function(data, index){
+            coef(lm(rating ~ popularity + genre + mood, data, subset
+            = index))[2]
+}
+
+# boot function for cor
+# The boot.cor object has rows corresponding to
+# cor(beta_0, beta_1)
+# cor(beta_0, beta_2)
+
+# cor(beta_0, beta_3)
+# cor(beta_1, beta_2)
+# cor(beta_1, beta_3)
+# cor(beta_2, beta_3)
+boot.fn.cor = function(data, index) {
+  res = cov2cor(vcov(lm(rating ~ popularity + genre + mood,
+                        data=data, subset = index)))
+  return(c(res[lower.tri(res)]))
+}
+# bootstrap replicates
+boot.beta1 <- boot(mov_train, fct_coe, 1e3)
+boot.cor <- boot(mov_train, boot.fn.cor, 1e3)
+# 95% bootstrap percentile CI
+boot.ci(boot.beta1, type = "perc")
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+library(knitr)
+
+boot_CI_cor <- apply(boot.cor$t, 2, quantile, probs =
+                c(0.025,0.975))
+colnames(boot_CI_cor) <- c("cor(beta_0, beta_1)", "cor(beta_0, beta_2)",
+          "cor(beta_0, beta_3)", "cor(beta_1, beta_2)", "cor(beta_1, beta_3)",
+          "cor(beta_2, beta_3)")
+
+kable(boot_CI_cor, caption = "95% bootstrap percentile CI for
+Correlations")
+
+```
+
+# iv 
+
+The 95% confidence interval for Beta1 is [0.34691, 0.3944], suggesting that we 
+are 95% confident that the confidence interval can capture the true beta1.
+Since the null hypothesis is Beta1 = 0, which is not included in this interval, 
+we reject the null hypothesis. 
+
+# v
+
+* Finding the best model using 10-fold cross valuation, the test error rate for
+all 3 models is very close, but lm3 has a slightly smaller test error. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+lm1 <- glm(rating ~ popularity + genre + mood, family=gaussian(link="identity")
+           , mov_train)
+
+lm2 <- glm(rating ~ popularity * genre + popularity * mood + genre:
+            mood, family = gaussian(link="identity"), mov_train)
+
+lm3 <- glm(rating ~ popularity * genre + popularity * mood +
+          genre:mood + I(popularity^2) + I(genre^2), family =
+          gaussian(link="identity"), mov_train)
+
+
+(cv_er1 <- cv.glm(mov_train, lm1, K = 10)$delta[1])
+(cv_er2 <- cv.glm(mov_train, lm2, K = 10)$delta[1])
+(cv_er3 <- cv.glm(mov_train, lm3, K = 10)$delta[1])
+
+```
+
+# vi
+
+* Finding the best model using leave-one-out cross-valuation. lm1 has the 
+smallest test error so it is the best model. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+msehatloocv1 <- mean(((mov_train$rating - lm1$fitted.values) /
+                (1 - hatvalues(lm1))) ^ 2)
+
+msehatloocv2 <- mean(((mov_train$rating - lm1$fitted.values) /
+                      (1 - hatvalues(lm2))) ^ 2)
+
+msehatloocv3 <- mean(((mov_train$rating - lm1$fitted.values) /
+                      (1 - hatvalues(lm3))) ^ 2)
+
+print(c(msehatloocv1, msehatloocv2, msehatloocv3))
+```
+
+# 1.2
+
+# i
+
+* Constructing the test MSE curve as a function of 1/K using 10-fold cross-
+validation =.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+set.seed(4540)
+folds <- createFolds(y = mov_train$rating, k = 10) # folds[[i]] is the i-th fold
+Klist = c(1, 10, 50, 100, 200, 500, 1000, 1500, 2000, 3000)
+
+testMSE <- function(K) {
+  mse_fold <- rep(NA, 10)
+  for (i in 1:10) {
+    train_cv <- mov_train[-folds[[i]],]
+    test_cv <- mov_train[folds[[i]],]
+    kreg <- knn.reg(train = train_cv[, 2:4], test = test_cv[, 2:4],
+            y = train_cv$rating, K)
+    # obtain prediction of test set immediately.
+    mse_fold[i] <- mean((test_cv$rating - kreg$pred)^2)
+  }
+return(mean(mse_fold))
+}
+
+# calculate testmse for all possible K
+Testmse <- sapply(Klist, testMSE)
+# plot
+plot(rev(1/Klist), rev(Testmse), cex = 0.5, xlab = "1/K", ylab =
+      "Test MSE", main = "TestMSE for all K" )
+
+lines(rev(1/Klist), rev(Testmse))
+abline(v = 1 / Klist[which.min(Testmse)], lwd = 1, col = "green")
+
+
+```
+
+# ii
+
+* Find the best K using the test MSE curve
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+names(Testmse) <- c(1, 10, 50, 100, 200, 500, 1000, 1500, 2000, 3000)
+Testmse
+
+``` 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+
+Klist[which.min(Testmse)]
+
+```
+
+# iii
+
+* Based on the chosen k-NN model, constructed a 95% confidence interval for 
+sigma^2 using bootstrap. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+set.seed(4540)
+boot.var <- function(data, i){
+  knn_reg <- knn.reg(train = data[i, 2:4], test = data[, 2:4], y =
+                      data[i, 1], k = 200)
+  error <- data[, 1] - knn_reg$pred
+  return(var(error))
+}
+
+boot.var <- boot(mov_train, boot.var, 200)
+(boot.var.ci <- quantile(as.numeric(boot.var$t), prob = c(0.025,
+                                                        0.975)))
+```
+
+# 1.3
+
+* Estimating the test MSEs for the choses linear regression and K-NN models.
+Between lm3 and KNN model where K = 200, the linear regression model is better 
+because it has the smaller error rate.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+
+(mse_lm3 <- mean((mov_test$rating - predict(lm3, mov_test))^2))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+knn_reg <- knn.reg(train = mov_train[, 2:4], test = mov_test[, 2:4],
+            y = mov_train[, 1], k = 200)
+(mse_knn <- mean((mov_test$rating - knn_reg$pred)^2))
+```
+
+# 2.1
+
+# i 
+
+* Checking for dependice among the predictors by using pair plots and a 
+correlation matrix. There seems to be an obvious positive linear relationship
+between log_smoothness_mean and log_compactness_mean. No significant dependence 
+among other pairs. 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+
+wisc_train$diagnosis <- ifelse(wisc_train$diagnosis == "M", 1, 0) # Y = 1 --M
+pairs(wisc_train[, -1])
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+cor(wisc_train[, -1])
+
+```
+
+# ii
+
+* Fit a logistic regression model with Y as the response and X1,X2 and X3 as 
+predictors. The 95% confidence interval for Beta1 hat is [4.048455, 6.969725] 
+which means that we are 95% confident that the confidence interval will capture 
+the true beta1.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+lg1 <- glm(diagnosis ~., family = binomial, wisc_train)
+summary(lg1)
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+confint(lg1)[2,]
+```
+
+# iii
+
+* The logistic regression model with Y as the response and X1,X2,X3,X1X2,X2X3,
+X1X3 as predictors.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+lg2 <- glm(diagnosis ~ log_texture_mean * log_smoothness_mean
+      + log_texture_mean * log_compactness_mean +
+      log_smoothness_mean : log_compactness_mean, family =
+      binomial, wisc_train)
+
+coef(lg2)
+```
+
+# iv
+
+* Added a 3rd model and used 10-fold cross-validation to choose the best model 
+based on the overall error rate in correctly classifying the malignant tumors.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+set.seed(4540)
+folds <- createFolds(y = wisc_train$diagnosis, k = 10) # folds[[i]] is 
+                                                       # the i-th fold
+
+aler_corm <- function(c) {
+    overall_error_fold <- matrix(NA, 3, 10)
+    correct_M_fold <- matrix(NA, 3, 10)
+    
+    for (i in 1:10) {
+      train_cv <- wisc_train[-folds[[i]], ]
+      test_cv <- wisc_train[folds[[i]], ]
+      
+      
+      lg1 <- glm(diagnosis ~., family = binomial, train_cv)
+      prob_lg1 <- predict(lg1, test_cv, type = "response")
+      pred_lg1 <- ifelse(prob_lg1 > c, 1, 0)
+      CM <- table(pred_lg1, test_cv$diagnosis)
+      correct_M <- CM[2,2] / sum(CM[, 2])
+      overall_error <- mean(pred_lg1 != test_cv$diagnosis)
+      overall_error_fold[1, i] <- overall_error
+      correct_M_fold[1, i] <- correct_M
+      
+      lg2 <- glm(diagnosis ~ log_texture_mean * log_smoothness_mean +
+                log_texture_mean * log_compactness_mean +
+                log_smoothness_mean : log_compactness_mean, family
+                = binomial, train_cv)
+      
+      prob_lg2 <- predict(lg2, test_cv, type = "response")
+      pred_lg2 <- ifelse(prob_lg2 > c, 1, 0)
+      CM <- table(pred_lg2, test_cv$diagnosis)
+      correct_M <- CM[2,2] / sum(CM[, 2])
+      overall_error <- mean(pred_lg2 != test_cv$diagnosis)
+      overall_error_fold[2, i] <- overall_error
+      correct_M_fold[2, i] <- correct_M
+      
+      
+      lg3 <- glm(diagnosis ~ log_texture_mean * log_smoothness_mean +
+                log_texture_mean * log_compactness_mean +
+                log_smoothness_mean : log_compactness_mean +
+                I(log_texture_mean^2) + I(log_smoothness_mean^2) +
+                I(log_compactness_mean^2), family = binomial,
+                train_cv)
+      
+      prob_lg3 <- predict(lg3, test_cv, type = "response")
+      pred_lg3 <- ifelse(prob_lg3 > c, 1, 0)
+      CM <- table(pred_lg3, test_cv$diagnosis)
+      correct_M <- CM[2,2] / sum(CM[, 2])
+      overall_error <- mean(pred_lg3 != test_cv$diagnosis)
+      overall_error_fold[3, i] <- overall_error
+      correct_M_fold[3, i] <- correct_M
+      
+    }
+    all_error <- rowMeans(overall_error_fold)
+    correct_M <- rowMeans(correct_M_fold)
+    return(c(all_error, correct_M))      
+}
+
+c <- c(0.25, 0.35, 0.45, 0.55, 0.65)
+error_corretM <- sapply(c, aler_corm)
+colnames(error_corretM) = c(0.25, 0.35, 0.45, 0.55, 0.65)
+
+overall_error_rate <- error_corretM[1:3, ]
+rownames(overall_error_rate) = c("lg_a", "lg_b", "lg_c")
+# overall_error_rate
+
+accuracy_correctly_M <- error_corretM[4:6, ]
+rownames(accuracy_correctly_M) = c("lg_a", "lg_b", "lg_c")
+# accuracy_correctly_M
+
+kable(overall_error_rate, caption = "Overall error rate for logistic
+      model a, b, and c")
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kable(accuracy_correctly_M, caption = "Accuracy in correctly
+        classifying the malignant tumors for logistic model a, b, and
+        c")
+
+```
+
+# v
+Considering the overall error rate, the logistic model (c) has the smallest 
+overall error rate among these three models. Generally speaking, the overall 
+error rate decreases as threshold increases until threshold = 0.55, then it 
+goes up a little bit when threshold = 0.65. Therefore, the best logistic model 
+is (c) with threshold = 0.55 based on the overall error rate.
+
+Considering the accuracy in correctly classifying the malignant tumors, the 
+logistic model (c) has the largest accuracy in correctly classifying M among 
+these three models. Generally speaking, accuracy decreases as threshold 
+increases. Therefore, the best logistic model is (c) with threshold = 0.25
+based on the accuracy in correctly classifying the malignant tumors.
+
+# 2.2
+
+# i 
+
+
+
+
+# ii
+
+
+
+# iii 
+
+* Fitting LDA and QDA models and identifying the prior probability and the mean
+parameter estimates. Since the we use the same dataset to train
+LDA and QDA model, prior probabilities and mean parameter estimates are the 
+same in LDA and QDA.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+library(MASS)
+
+lda <- lda(diagnosis ~., wisc_train)
+# lda$prior
+# lda$means
+
+qda <- qda(diagnosis ~., wisc_train)
+# qda$prior
+# qda$means
+
+kable(lda$prior, caption = "prior probability of LDA")
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kable(qda$prior, caption = "prior probability of QDA")
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kable(lda$means, caption = "mean parameter estimates of LDA")
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kable(qda$means, caption = "mean parameter estimates of QDA")
+```
+
+# iv
+
+* Using 10-fold cross-validation to determine which threshold should be 
+used in LDA for predicting the response depending on the two classification 
+performance metrics.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+# use the same folds split in 1(iv)
+LDAcv <- function(c) {
+  overall_error_fold <- matrix(NA, 3, 10)
+  correct_M_fold <- matrix(NA, 3, 10)
+  for (i in 1:10) {
+    train_cv <- wisc_train[-folds[[i]], ]
+    test_cv <- wisc_train[folds[[i]], ]
+
+
+    lda1 <- lda(diagnosis ~., train_cv)
+    prob <- predict(lda1, test_cv)$posterior[, 2] #post prob of falling in y = 1
+    pred <- ifelse(prob > c, 1, 0)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[1, i] <- overall_error
+    correct_M_fold[1, i] <- correct_M
+
+    lda2 <- lda(diagnosis ~ log_texture_mean * log_smoothness_mean +
+        log_texture_mean * log_compactness_mean +
+        log_smoothness_mean : log_compactness_mean,
+        train_cv)
+    prob <- predict(lda2, test_cv)$posterior[, 2] #post prob of falling in y = 1
+    pred <- ifelse(prob > c, 1, 0)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[2, i] <- overall_error
+    correct_M_fold[2, i] <- correct_M
+    
+    lda3 <- lda(diagnosis ~ log_texture_mean * log_smoothness_mean +
+          log_texture_mean * log_compactness_mean +
+          log_smoothness_mean : log_compactness_mean +
+          I(log_texture_mean^2) + I(log_smoothness_mean^2) +
+          I(log_compactness_mean^2), train_cv)
+    prob <- predict(lda3, test_cv)$posterior[, 2] #post prob of falling in y = 1
+    pred <- ifelse(prob > c, 1, 0)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[3, i] <- overall_error
+    correct_M_fold[3, i] <- correct_M
+  }
+  all_error <- rowMeans(overall_error_fold)
+  correct_M <- rowMeans(correct_M_fold)
+
+  return(c(all_error, correct_M))
+}
+c <- c(0.25, 0.35, 0.45, 0.55, 0.65)
+error_corretM <- sapply(c, LDAcv)
+colnames(error_corretM) = c(0.25, 0.35, 0.45, 0.55, 0.65)
+overall_error_rate <- error_corretM[1:3, ]
+rownames(overall_error_rate) = c("LDA_a", "LDA_b", "LDA_c")
+# overall_error_rate
+
+accuracy_correctly_M <- error_corretM[4:6, ]
+rownames(accuracy_correctly_M) = c("LDA_a", "LDA_b", "LDA_c")
+# accuracy_correctly_M
+
+kable(overall_error_rate, caption = "Overall error rate for LDA model a, 
+                                                                    b, and c")
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kable(accuracy_correctly_M, caption = "Accuracy in correctly classifying the 
+                            malignant tumors for LDA model a, b, and c")
+
+```
+
+# v
+
+* Repeated for QDA
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+QDAcv <- function(c) {
+  overall_error_fold <- matrix(NA, 3, 10)
+  correct_M_fold <- matrix(NA, 3, 10)
+  for (i in 1:10) {
+    train_cv <- wisc_train[-folds[[i]], ]
+    test_cv <- wisc_train[folds[[i]], ]
+
+    qda1 <- qda(diagnosis ~., train_cv)
+    prob <- predict(qda1, test_cv)$posterior[, 2] #post prob of falling in y = 1
+    pred <- ifelse(prob > c, 1, 0)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[1, i] <- overall_error
+    correct_M_fold[1, i] <- correct_M
+
+    qda2 <- qda(diagnosis ~ log_texture_mean * log_smoothness_mean +
+            log_texture_mean * log_compactness_mean +
+            log_smoothness_mean : log_compactness_mean,
+            train_cv)
+    prob <- predict(qda2, test_cv)$posterior[, 2] #post prob of falling in y = 1
+    pred <- ifelse(prob > c, 1, 0)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[2, i] <- overall_error
+    correct_M_fold[2, i] <- correct_M
+    
+    qda3 <- qda(diagnosis ~ log_texture_mean * log_smoothness_mean +
+            log_texture_mean * log_compactness_mean +
+            log_smoothness_mean : log_compactness_mean +
+            I(log_texture_mean^2) + I(log_smoothness_mean^2) +
+            I(log_compactness_mean^2), train_cv)
+    prob <- predict(qda3, test_cv)$posterior[, 2] #post prob of falling in y = 1
+    pred <- ifelse(prob > c, 1, 0)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[3, i] <- overall_error
+    correct_M_fold[3, i] <- correct_M
+  }
+  all_error <- rowMeans(overall_error_fold)
+  correct_M <- rowMeans(correct_M_fold)
+  return(c(all_error, correct_M))
+}
+
+c <- c(0.25, 0.35, 0.45, 0.55, 0.65)
+error_corretM <- sapply(c, QDAcv)
+colnames(error_corretM) = c(0.25, 0.35, 0.45, 0.55, 0.65)
+overall_error_rate <- error_corretM[1:3, ]
+rownames(overall_error_rate) = c("QDA_a", "QDA_b", "QDA_c")
+# overall_error_rate
+accuracy_correctly_M <- error_corretM[4:6, ]
+rownames(accuracy_correctly_M) = c("QDA_a", "QDA_b", "QDA_c")
+# accuracy_correctly_M
+kable(overall_error_rate, caption = "Overall error rate for QDA model a, b
+                                                                      , and c")
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kable(accuracy_correctly_M, caption = "Accuracy in correctly classifying the
+      malignant tumors for QDA model a, b, and c")
+```
+
+# vi
+
+Logistic model (a) is closest to LDA as they both have linear decision 
+boundaries;
+
+Logistic model (c) is closest to QDA as they both have quadratic decision 
+boundaries.
+
+Logistic model (a) is closest to LDA (a) with both linear decision boundaries;
+
+Logistic model(c), LDA(c), and QDA (a) are very close as they have similar 
+quadratic decision boundaries.
+
+# 2.3
+
+* Used 10-fold cross-validation, construct curves for the (test) overall error 
+rate and (test) accuracy in correctly classifying the malignant tumors as a 
+function of 1/K.
+
+# i 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+KNNcv <- function(k) {
+  overall_error_fold <- rep(NA, 10)
+  correct_M_fold <- rep(NA, 10)
+  for (i in 1:10) {
+    train_cv <- wisc_train[-folds[[i]], ]
+    test_cv <- wisc_train[folds[[i]], ]
+    pred <- knn(train_cv[, 2:4], test_cv[, 2:4], train_cv$diagnosis,
+    k)
+    CM <- table(pred, test_cv$diagnosis)
+    correct_M <- CM[2,2] / sum(CM[, 2])
+    overall_error <- mean(pred != test_cv$diagnosis)
+    overall_error_fold[i] <- overall_error
+    correct_M_fold[i] <- correct_M
+  }
+  all_error <- mean(overall_error_fold)
+  correct_M <- mean(correct_M_fold)
+  return(c(all_error, correct_M))
+}
+
+K <- c(1, 2, 3, 5, 10, 20, 50, 100)
+error_corretM <- sapply(K, KNNcv)
+colnames(error_corretM) = c(1, 2, 3, 5, 10, 20, 50, 100)
+rownames(error_corretM) = c("overall error rate", "accuracy in
+correctly classifying the malignant tumors")
+
+round_M <- round(error_corretM, 4)
+kable(round_M, caption = "Overall error rate and accuracy in
+correctly classifying M for KNN model with different K")
+
+```
+
+# ii
+
+* Use the previous curves to find the optimal Ks with the minimum (test)
+error rates and (test) accuracy in correctly classifying the malignant tumors.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+par(mfrow = c(1,2))
+kopt_er = K[which.min(error_corretM[1, ])]
+plot(rev(1/K), rev(error_corretM[1, ]), xlab = "1/K", ylab =
+      "Overall error rate")
+lines(rev(1/K), rev(error_corretM[1, ]))
+abline(v = 1/kopt_er, col = "green")
+
+kopt_ac = K[which.max(error_corretM[2, ])]
+plot(rev(1/K), rev(error_corretM[2, ]), xlab = "1/K", ylab =
+      "accuracy in correctly classifying M")
+lines(rev(1/K), rev(error_corretM[2, ]))
+abline(v = 1/kopt_ac, col = "green")
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kopt_er
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+kopt_ac
+```
+
+# iii
+
+* Used bootstrap to construct the 95% confidence intervals for the 
+sensitivity and specificity of the model with the best overall error rate.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+set.seed(4540)
+  fct_ses_spe <- function(data, i) {
+  pred <- knn(data[i, 2:4], data[, 2:4], data[i, 1], k = 20)
+  CM <- table(pred, data[, 1])
+  sensi <- CM[2,2] / sum(CM[, 2])
+  speci <- 1 - (CM[2,1] / sum(CM[, 1]))
+  return(c(sensi, speci))
+  }
+  
+(boot_rep <- boot(wisc_train, fct_ses_spe, 1e2))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+(CI_sensi <- quantile(boot_rep$t[, 1], c(0.025, 0.975)))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+(CI_speci <- quantile(boot_rep$t[, 2], c(0.025, 0.975)))
+```
+
+# 4
+
+* Constructed the confusion matrices for the new test data using the logistic 
+regression, LDA, QDA, and K-NN models with the best error rates. Based on the 
+models 
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+wisc_test <- read.csv("wisc_eval.csv")
+wisc_test$diagnosis <- ifelse(wisc_test$diagnosis == "M", 1, 0)
+
+lg3 <- glm(diagnosis ~ log_texture_mean * log_smoothness_mean +
+      log_texture_mean * log_compactness_mean +
+      log_smoothness_mean : log_compactness_mean +
+      I(log_texture_mean^2) + I(log_smoothness_mean^2) +
+      I(log_compactness_mean^2), family = binomial,
+      wisc_train)
+prob_lg3 <- predict(lg3, wisc_test, type = "response")
+pred_lg3 <- ifelse(prob_lg3 > 0.55, 1, 0)
+(CM <- table(pred_lg3, wisc_test$diagnosis))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+sensi <- CM[2,2] / sum(CM[, 2])
+names(sensi) <- c("sensitivity")
+sensi
+
+speci <- 1 - CM[2,1] / sum(CM[, 1])
+names(speci) <- c("specificity")
+speci
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+lda <- lda(diagnosis ~ log_texture_mean * log_smoothness_mean +
+        log_texture_mean * log_compactness_mean +
+        log_smoothness_mean : log_compactness_mean +
+        I(log_texture_mean^2) + I(log_smoothness_mean^2) +
+        I(log_compactness_mean^2), wisc_train)
+
+prob <- predict(lda, wisc_test)$posterior[, 2]
+pred_lda <- ifelse(prob > 0.55, 1, 0)
+(CM <- table(pred_lda, wisc_test$diagnosis))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+sensi <- CM[2,2] / sum(CM[, 2])
+names(sensi) <- c("sensitivity")
+sensi
+
+speci <- 1 - CM[2,1] / sum(CM[, 1])
+names(speci) <- c("specificity")
+speci
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+qda <- qda(diagnosis ~., wisc_train)
+prob <- predict(qda, wisc_test)$posterior[, 2]
+pred_qda <- ifelse(prob > 0.65, 1, 0)
+(CM <- table(pred_qda, wisc_test$diagnosis))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+sensi <- CM[2,2] / sum(CM[, 2])
+names(sensi) <- c("sensitivity")
+sensi
+
+speci <- 1 - CM[2,1] / sum(CM[, 1])
+names(speci) <- c("specificity")
+speci
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+pred_knn <- knn(wisc_train[, 2:4], wisc_test[, 2:4],
+      wisc_train$diagnosis, 20)
+(CM_knn <- table(pred_knn, wisc_test$diagnosis))
+
+```
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+sensi <- CM_knn[2,2] / sum(CM_knn[, 2])
+names(sensi) <- c("sensitivity")
+sensi
+
+speci <- 1 - CM_knn[2,1] / sum(CM_knn[, 1])
+names(speci) <- c("specificity")
+speci
+```
+
