@@ -28,14 +28,11 @@ wisc_test <- read.csv("wisc_eval.csv", na.strings="NA")
 ```markdown
 lm1 <- lm(rating ~ ., mov_train)
 
-
 lm2 <- lm(rating ~ popularity + genre + mood + I(popularity * genre)
 + I(popularity * mood) + I(genre * mood), mov_train)
-
-
-
++ 
 lm3 <- lm(rating ~ popularity + genre + mood + I(popularity^2)
-+ I(genre^2) + I(popularity * genre) + I(popularity *mood)
++ I(genre^2) + I(popularity * genre) + I(popularity * mood)
 + I(genre * mood), mov_train)
 ```
 ![This is an image](https://github.com/DanielDemaria/School_Projects/blob/main/images/00000f.png?raw=true)
