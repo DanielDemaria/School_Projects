@@ -49,7 +49,7 @@ qqline(lm2$residuals)
 qqnorm(lm3$residuals)
 qqline(lm3$residuals)
 ```
-![This is an image](https://github.com/DanielDemaria/School_Projects/blob/main/images/00000f.png?raw=true)
+![This is an image](https://github.com/DanielDemaria/School_Projects/blob/gh-pages/images/00000f.png?raw=true)
 
 
 
