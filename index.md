@@ -1,4 +1,4 @@
-## Statistical Learning
+## Statistical Learning Project
 
 ```markdown
 library(boot)
