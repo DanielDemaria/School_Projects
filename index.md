@@ -1,5 +1,3 @@
-## Daniel DeMaria
-
 ## Statistical Learning
 
 ```markdown
