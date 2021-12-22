@@ -1,8 +1,7 @@
 ## Daniel DeMaria
 
 
-### Markdown
-
+### Statisitical Learning Project
 ```markdown
 lm1 <- lm(rating ~ ., mov_train)
 summary(lm1)
