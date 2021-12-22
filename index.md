@@ -38,7 +38,7 @@ lm3 <- lm(rating ~ popularity + genre + mood + I(popularity^2)
 + I(genre^2) + I(popularity * genre) + I(popularity *mood)
 + I(genre * mood), mov_train)
 ```
-!(https://github.com/DanielDemaria/School_Projects/blob/main/images/00000f.png?raw=true)
+![This is an image](https://github.com/DanielDemaria/School_Projects/blob/main/images/00000f.png?raw=true)
 
 
 
