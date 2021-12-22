@@ -51,7 +51,7 @@ qqline(lm3$residuals)
 ```
 ![This is an image](https://github.com/DanielDemaria/School_Projects/blob/gh-pages/images/00000f.png?raw=true)
 
-
+<a href="./page1">Go to next page</a>
 
 
 
