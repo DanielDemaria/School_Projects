@@ -6,7 +6,7 @@
 }
 
 .green {
-    color: #eddc1a;
+    color: #64666e;
 }
 
 .center {
@@ -21,7 +21,7 @@ body {
 
 h1 {
     font-family: 'blackjack', cursive;
-    color: #eddc1a;
+    color: #64666e;
     font-size: 3em;
     font-weight: bold;
     margin-top: 40px;
@@ -30,7 +30,7 @@ h1 {
 h2 {
     font-size: 1.5em;
     font-weight: 600;
-    color: #eddc1a;
+    color: #64666e;
     text-transform: uppercase;
     padding: 20px 0;
 }
@@ -146,7 +146,7 @@ main a:link {
 }
 
 main a:hover {
-    color: #eddc1a;
+    color: #64666e;
     text-decoration: none;
 }
 
