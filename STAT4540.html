@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Daniel DeMaria - About Me</title>
+    <title>Daniel DeMaria - STAT4540</title>
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="bootstrap-3.3.6-dist/css/bootstrap.min.css">
@@ -68,14 +68,35 @@
         <main>
             <div class="row">
                 <div class="col-md-offset-3 col-md-6 col-sm-offset-2 col-sm-8 center">
-                    <h2><sub><span class="subpage_bracket"></span></sub> About Me <sub><span class="subpage_bracket"></span></sub></h2>
+                    <h2><sub><span class="subpage_bracket"></span></sub> Statistical Learning Project:Part 1 <sub><span class="subpage_bracket"></span></sub></h2>
                 </div>
             </div>
 
             <div class="row">
                 <div class="col-md-offset-3 col-md-6 col-sm-offset-2 col-sm-8">
 
-                    <p>I am currently a Data Science student at the University of Iowa with a graduation date of May 2022. This website contains some of the projects that I have worked on during my time at Iowa, as well as projects that I have worked on independently. 
+                    <p>
+                        <code class="codeblock">
+                        library(boot)
+                        library(class)
+                        library(FNN)
+                        library(caret)
+                        library(MASS)
+                        library(ggplot2)
+                        library(tidyverse)
+                        library(knitr)
+
+
+                        #read in data/load in packages 
+
+                        mov_test <- read.csv("mov_eval.csv", na.strings="NA")
+
+                        mov_train <- read.csv("mov_train.csv", na.strings="NA")
+
+                        wisc_train <- read.csv("wisc.csv", na.strings="NA")
+
+                        wisc_test <- read.csv("wisc_eval.csv", na.strings="NA")
+                        </code>
                     </p>
 
                 </div>
