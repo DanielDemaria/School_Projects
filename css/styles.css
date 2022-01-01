@@ -6,7 +6,7 @@
 }
 
 .green {
-    color: #908e4a;
+    color: #eddc1a;
 }
 
 .center {
@@ -15,13 +15,13 @@
 
 body {
     font-family: 'Lato', 'Helvetica Neue', Arial, sans-serif;
-    background-color: #908e4a;
+    background-color: #eddc1a;
     margin-top: 15px;
 }
 
 h1 {
     font-family: 'blackjack', cursive;
-    color: #908e4a;
+    color: #eddc1a;
     font-size: 3em;
     font-weight: bold;
     margin-top: 40px;
@@ -30,7 +30,7 @@ h1 {
 h2 {
     font-size: 1.5em;
     font-weight: 600;
-    color: #908e4a;
+    color: #eddc1a;
     text-transform: uppercase;
     padding: 20px 0;
 }
@@ -146,7 +146,7 @@ main a:link {
 }
 
 main a:hover {
-    color: #908e4a;
+    color: #eddc1a;
     text-decoration: none;
 }
 
@@ -158,7 +158,7 @@ main ul {
 /* FOOTER STYLES */
 
 footer {
-    background-color: #908e4a;
+    background-color: #eddc1a;
     padding-top: 20px;
     padding-bottom: 30px;
     border: 2px solid #f3eedb;
