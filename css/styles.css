@@ -15,7 +15,7 @@
 
 body {
     font-family: 'Lato', 'Helvetica Neue', Arial, sans-serif;
-    background-color: #eddc1a;
+    background-color: #141414;
     margin-top: 15px;
 }
 
@@ -158,7 +158,7 @@ main ul {
 /* FOOTER STYLES */
 
 footer {
-    background-color: #eddc1a;
+    background-color: #141414;
     padding-top: 20px;
     padding-bottom: 30px;
     border: 2px solid #f3eedb;
