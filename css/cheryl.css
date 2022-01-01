@@ -103,8 +103,8 @@ input[type="submit"]:hover {
 }
 
 input[type="radio"]:selected {
-    color: #908e4a !important;
-    background-color: #908e4a !important;
+    color: #eddc1a !important;
+    background-color: #eddc1a !important;
 }
 
 
