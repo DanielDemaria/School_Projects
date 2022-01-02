@@ -75,35 +75,33 @@
             <div class="row">
                 <div class="col-md-12">
                     <button type="button" class="btn btn-default btn-xs btn-secondary btn-sm code-folding-btn pull-right float-right" data-toggle="collapse" data-target="#rcode-643E0F364" aria-expanded="true" aria-controls="rcode-643E0F364">
-                        <span>Hide</span></button>
+                        <span>Hide</span>
                     </button>
                 </div
             </div>
         
-            <div class="row">
-                <div>
+            <div class="r-code-collapse collapse in" id="rcode-643E0F364" aria-expanded="true" style>   
+                <pre class="r">
+                    <code class="hljs">
+                        library(boot)
+                        library(class)
+                        library(FNN)
+                        library(caret)
+                        library(MASS)
+                        library(ggplot2)
+                        library(tidyverse)
+                        library(knitr)
 
-                    <pre class="r">
-                        <code class="hljs">
-                            library(boot)
-                            library(class)
-                            library(FNN)
-                            library(caret)
-                            library(MASS)
-                            library(ggplot2)
-                            library(tidyverse)
-                            library(knitr)
-
-                            #read in data/load in packages 
-                            mov_test <- read.csv("mov_eval.csv", na.strings="NA")
-                            mov_train <- read.csv("mov_train.csv", na.strings="NA")
-                            wisc_train <- read.csv("wisc.csv", na.strings="NA")
-                            wisc_test <- read.csv("wisc_eval.csv", na.strings="NA")
-                        </code>
-                    </pre>
-
-                </div>
+                        #read in data/load in packages 
+                        mov_test <- read.csv("mov_eval.csv", na.strings="NA")
+                        mov_train <- read.csv("mov_train.csv", na.strings="NA")
+                        wisc_train <- read.csv("wisc.csv", na.strings="NA")
+                        wisc_test <- read.csv("wisc_eval.csv", na.strings="NA")
+                    </code>
+                </pre>                
             </div>
+                    
+                    
         </main>
 
         <!-- DESKTOP AND TABLET FOOTER -->
@@ -124,6 +122,12 @@
             </div>
 
         </footer>
+        
+        <script>
+            $(document).ready(function () {
+                window.initializeCodeFolding("hide" === "show");
+            });
+        </script>
 
 </body>
 
